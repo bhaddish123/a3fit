@@ -1,77 +1,51 @@
-# A3 Fitness — Session Booking Platform
+# A3 Fitness
 
-A full-stack web application for a personal training studio. Clients can browse session types, book appointments, and pay online. The trainer has a dedicated admin dashboard to manage the schedule, view bookings, and handle availability.
+Full-stack booking platform for an independent personal trainer: scheduling, payments, and an admin dashboard, without a third-party booking product.
 
----
-
-## Features
-
-### Client-Facing
-- Browse session types (30-min, 60-min, etc.)
-- Interactive calendar showing real-time availability
-- Stripe-powered checkout with secure payment processing
-- Booking confirmation email with cancellation link
-- Automated reminder emails (24h and 2h before session)
-- Post-session follow-up email
-
-### Admin Dashboard
-- JWT-secured login
-- Monthly calendar view with color-coded slot status (confirmed, reserved, available, blocked)
-- Per-day slot modal — view, edit, block, and add time slots
-- Manage all bookings with status updates
-- Schedule override system — block individual slots or add one-off availability outside of recurring rules
+This is the **earlier iteration** of the system that later became [AIO Fitness](https://github.com/bhaddish123/aio-fitness). If you want the live, maintained product, start there. A user-flow diagram is in the repo as `User_flow_pic.drawio (1).pdf`.
 
 ---
 
-## Tech Stack
+## Tech stack
 
-**Frontend**
-- React 18, React Router v6
-- Vite
-- Custom CSS design system (Apple-inspired)
-
-**Backend**
-- Java 21, Spring Boot 3
-- Spring Security with stateless JWT authentication
-- Spring Data JPA / Hibernate
-- PostgreSQL (AWS RDS)
-- Stripe API (payments + webhooks)
-- JavaMailSender with Gmail SMTP
-- Spring `@Scheduled` for automated email reminders
+- **Frontend:** React 18, Vite, React Router v6, axios, date-fns, react-big-calendar, react-easy-crop, Tailwind CSS (as documented in the original README; the frontend is a Vite React app)
+- **Backend:** Java 21, Spring Boot 3.5, Spring Security, JPA
+- **Data & payments:** PostgreSQL, Stripe, email via Gmail SMTP
+- **Auth:** JWT admin login (`ADMIN_USERNAME` / `ADMIN_PASSWORD`, `JWT_SECRET`)
 
 ---
 
-## Architecture
+## Booking flow
+
+1. Client selects a session type and an available calendar slot.
+2. The backend reserves the slot (15-minute hold in this codebase's documentation) and creates a Stripe Checkout session.
+3. Payment completes → Stripe webhook confirms the booking.
+4. A confirmation email is sent; reminders are scheduled.
+
+Availability comes from recurring weekly rules stored in the database; slots are computed dynamically (next 30 days). Admins can block individual slots or add one-off slots with schedule overrides. A cleanup scheduler releases unpaid reservations. The webhook handler checks existing booking status before confirming, to avoid duplicate confirmations.
+
+---
+
+## Project structure
 
 ```
-frontend/          React SPA (Vite)
-backend/
-  └── a3fit-backend/   Spring Boot REST API
-        ├── controller/   REST endpoints (auth, bookings, availability, admin)
-        ├── service/      Business logic, email, scheduling
-        ├── model/        JPA entities (Booking, SessionType, AvailabilityRule, ScheduleOverride)
-        └── repository/   Spring Data repositories
+a3fit/
+├── frontend/                 # React + Vite
+└── backend/a3fit-backend/    # Spring Boot
+    └── src/main/java/...
+        ├── controller/
+        ├── service/          # business logic, email, scheduling
+        ├── model/            # Booking, SessionType, AvailabilityRule, ScheduleOverride
+        └── repository/
 ```
-
-**Booking flow:**
-1. Client selects session type → picks available slot on calendar
-2. Backend reserves slot (15-min hold) → creates Stripe Checkout session
-3. Client completes payment → Stripe webhook confirms booking
-4. Confirmation email sent → reminders scheduled automatically
 
 ---
 
-## Running Locally
+## Running locally
 
-### Prerequisites
-- Java 21
-- Node 18+
-- PostgreSQL
-- Stripe CLI (for webhook testing)
+**Prerequisites:** Java 21, Node 18+, PostgreSQL, Stripe CLI (for webhook testing).
 
 ### Backend
-
-Set the following environment variables:
 
 ```bash
 export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/a3fit_backend
@@ -84,9 +58,7 @@ export MAIL_USERNAME=your_gmail@gmail.com
 export MAIL_PASSWORD=your_gmail_app_password
 export STRIPE_API_KEY=sk_test_...
 export STRIPE_WEBHOOK_SECRET=whsec_...
-```
 
-```bash
 cd backend/a3fit-backend
 ./mvnw spring-boot:run
 ```
@@ -99,13 +71,10 @@ npm install
 npm run dev
 ```
 
-App runs at `http://localhost:5173`, API at `http://localhost:8080`.
+App: `http://localhost:5173` · API: `http://localhost:8080`.
 
 ---
 
-## Key Implementation Details
+## See also
 
-- **Availability rules** — recurring weekly schedule stored in DB; slots computed dynamically for the next 30 days
-- **Schedule overrides** — admin can block individual slots or add one-off slots outside of rules; both reflected immediately in client-facing availability
-- **Reservation expiry** — slots are held for 15 minutes during checkout; a cleanup scheduler releases unpaid reservations automatically
-- **Idempotent webhooks** — Stripe webhook handler checks existing booking status before processing to avoid duplicate confirmations
+[aio-fitness](https://github.com/bhaddish123/aio-fitness) — the production version of this design (Google Calendar sync, intake forms, site-content CMS, and a live deployment).
